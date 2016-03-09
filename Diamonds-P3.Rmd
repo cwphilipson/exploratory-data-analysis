@@ -1,0 +1,109 @@
+---
+title: "EDA - Diamonds P3"
+author: "Casandra Philipson"
+date: "February 22, 2016"
+output: html_document
+---
+
+###Summary
+This exploratory data analysis code pertains to the UDACITY course "Data Analysis with R", problem set 5. Two datasets will be used: 1. built in dataset "Diamonds", and 2. pseudo facebook data provided by UDACITY.
+
+###Diamonds: Price Histogram
+Create a histogram of diamond prices. Facet Facet the histogram by diamond color and use cut to color the histogram bars.
+
+```{r}
+#Load necessary packages
+suppressMessages(library(ggplot2))
+suppressMessages(library(gridExtra))
+suppressMessages(library(dplyr))
+suppressMessages(library(reshape2))
+
+#Build Histogram
+ggplot(diamonds, aes(x = price, fill = cut)) + 
+      geom_histogram(binwidth = 500) +
+  scale_fill_brewer() +
+  facet_wrap( ~ color)
+```
+
+
+###Price vs. Table Colored by Cut
+Create a scatterplot of diamond price vs. table and color the points by the cut of the diamond.  
+From the graph, determine the typical table range for the majority of diamonds of ideal versus premium cuts.
+
+```{r}
+ggplot(diamonds, aes(x = table, y = price)) +
+      geom_point(aes(color = cut)) +
+  coord_cartesian(xlim = c(50,80)) +
+  scale_color_brewer(palette = "Set2")
+```
+
+###Price vs. Volume and Diamond Clarity
+Create a scatterplot of diamond price vs. volume (x * y * z) and color the points by the clarity of diamonds. Use scale on the y-axis to take the log10 of price. You should also omit the top 1% of diamond volumes from the plot.
+
+```{r}
+#Make new column for volume
+diamonds <- transform(diamonds, volume = x*y*z)
+
+ggplot(aes(x = volume, y = price),
+       data = subset(diamonds, volume > 0))+
+  geom_point(aes(color = clarity)) +
+  coord_cartesian(xlim = c(0, quantile(diamonds$volume, 0.99))) +
+  scale_y_log10() +
+  scale_color_brewer(palette = "Set2")
+```
+
+### Price/Carat Binned, Faceted & Colored
+Create a scatter plot of the price/carat ratio of diamonds. The variable x should be assigned to cut. The points should be colored by diamond color, and the plot should be faceted by clarity.
+
+```{r}
+ggplot(aes(x = cut, y = price / carat),
+       data = diamonds) +
+  geom_point(aes(color = color), position = "jitter", size = 0.75) +
+  facet_wrap( ~ clarity) +
+  scale_color_brewer(type = 'div')
+```
+
+
+###Proportion of Friendships Initiated (Pseudo Facebook data set)
+Many interesting variables are derived from two or more others. For example, we might wonder how much of a person's network on a service like Facebook the user actively initiated. Two users with the same degree (or number of friends) might be very different if one initiated most of those connections on the service, while the other initiated very few. So it could be useful to consider this proportion of existing friendships that the user initiated. This might be a good predictor of how active a user is compared with their peers, or other traits, such as personality (i.e., is this person an extrovert?).  
+  
+Create a new variable called 'prop_initiated' in the Pseudo-Facebook data set. The variable should contain the proportion of friendships that the user initiated.
+
+```{r}
+#Import pseudo facebook dataset
+pf<- read.csv("pseudo_facebook.tsv", sep = '\t')
+pf <- transform(pf, prop_initiated = friendships_initiated / friend_count)
+```
+
+Separate tenure by bins then create a line graph of the median proportion of friendships initiated ('prop_initiated') vs. tenure and color the line segment by year_joined.bucket.  
+User bins are:  
+*  2004 - 2009  
+*  2009 - 2011  
+*  2011 - 2012  
+*  2012 - 2014  
+
+```{r}
+
+pf$year_joined <- floor((2014 - pf$tenure/365))
+pf$year_joined.bucket <- cut(pf$year_joined, c(2004, 2009, 2011, 2012, 2014))
+
+p1 <- ggplot(aes(x = tenure, y = prop_initiated),
+       data = subset(pf, tenure >= 1)) +
+  geom_line(aes(color = year_joined.bucket),
+            stat = 'summary',
+            fun.y = median) +
+  scale_color_brewer(palette = "Set2")
+
+p2 <- ggplot(aes(x = tenure, y = prop_initiated),
+       data = subset(pf, tenure >= 1)) +
+  geom_smooth(aes(color = year_joined.bucket)) +
+  scale_color_brewer(palette = "Set2")
+
+grid.arrange(p1, p2, ncol = 1)
+```
+
+Using the following code we can see that the average proportion of initiated friendships of people that joined after 2012 is ~0.6654.
+```
+with(subset(pf, year_joined > 2012), summary(prop_initiated))
+```
+

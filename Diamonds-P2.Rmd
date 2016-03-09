@@ -1,0 +1,130 @@
+---
+title: "Diamonds-P2"
+author: "Casandra Philipson"
+date: "February 19, 2016"
+output: html_document
+---
+
+This code is for the UDACITY "Data Analysis with R" Lesson 4 problem set. The built in diamonds data set will be used.
+
+### Create a scatter plot of price versus x
+
+```{r}
+suppressMessages(library(ggplot2))
+suppressMessages(library(dplyr))
+suppressMessages(library(gridExtra))
+
+ggplot(diamonds, aes(x = x, y = price)) +
+  geom_point(alpha = 1/20) +
+  coord_cartesian(xlim = c(3, 10))
+
+```
+
+Observations: Overall there appears to be a positive exponential correlation between price and x. The x-axis has been limited to remove a few of the outliers from the figure. There are a few interesting clusters at x ~ 7.5 and x ~ 8.25.
+
+### What is the correlation between price and the variables x, y, and z?
+
+```{r}
+
+cor_x <- cor.test(diamonds$price, diamonds$x)
+cor_y <- cor.test(diamonds$price, diamonds$y)
+cor_z <- cor.test(diamonds$price, diamonds$z)
+
+```
+
+The correlation between price and the x/y/z variables are all close to 0.86
+
+### Create a scatter plot of price versus depth
+
+```{r}
+
+ggplot(diamonds, aes(x = depth, y = price)) +
+  geom_point(alpha = 1/100) +
+  coord_cartesian(xlim = c(55, 70)) +
+  scale_x_discrete(breaks = seq(55, 70, 2))
+
+
+cor.test(diamonds$price, diamonds$depth)
+```
+
+### Create a scatter plot of price versus carat
+
+```{r}
+
+ggplot(diamonds, aes(x = carat, y = price)) +
+  geom_point(alpha = 1/100, position = position_jitter(h = 0)) +
+  coord_cartesian(xlim = c(0, quantile(diamonds$carat, 0.99)),
+                  ylim = c(0, quantile(diamonds$price, 0.99)))
+    
+cor.test(diamonds$price, diamonds$carat)
+```
+
+
+### Create a scatter plot of price versus volume (x*y*z)
+
+```{r}
+
+diamonds$volume <- diamonds$x * diamonds$y * diamonds$z
+
+#Are there any diamonds with a volume == 0?
+tally(group_by(diamonds,volume == 0))
+
+#What is the correlation of price nd volume? Exclude diamonds that have volume of 0 or are greater than or equal to 800.
+with(subset(diamonds, volume > 0 & volume <= 800), cor.test(price, volume))
+
+#Plot this subset, add transparency, add linear plot
+ggplot(aes(x = volume, y = price), 
+       data = subset(diamonds, volume > 0 & volume <= 800)) +
+  coord_cartesian(ylim = c(0,20000)) +
+  geom_point(alpha = 1/50) +
+  geom_smooth(method = 'lm', color = 'red')
+
+```
+
+###Make two new data frames called diamonds_by_clarity and diamonds_by_color, then plot data 
+
+The data frame should contain the following variables (in order):  
+* mean_price  
+* median_price  
+* min_price  
+* max_price  
+* n  
+
+```{r}
+#create new data frame
+diamonds_by_clarity <- diamonds %>%
+  group_by(clarity) %>%
+  summarise(
+            mean_price = mean(price),
+            median_price = median(price),
+            min_price = min(price),
+            max_price = max(price),
+            n = n())
+
+diamonds_by_color <- diamonds %>%
+  group_by(color) %>%
+  summarise(
+            mean_price = mean(price),
+            median_price = median(price),
+            min_price = min(price),
+            max_price = max(price),
+            n = n())
+
+bar_p1 <- ggplot(diamonds_by_clarity, aes(x = factor(clarity), y = mean_price)) +
+  geom_bar(stat = "identity", fill = "darkgreen")
+
+bar_p2 <- ggplot(diamonds_by_color, aes(x = factor(color), y = mean_price)) +
+  geom_bar(stat = "identity")
+
+grid.arrange(bar_p1, bar_p2, ncol = 1)
+  
+```
+
+Mean price tends to decrease as clarity improves. The same can be said for color.
+
+### Working on a stacked bar chart for fun
+Note: facet_wrap is a better alternative to stacked charts!  
+
+```{r}
+ggplot(diamonds, aes(clarity, fill=cut)) + geom_bar()
+```
